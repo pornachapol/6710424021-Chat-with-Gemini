@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
+import google.generativeai as genai  # ✅ import module ให้ครบ
 
 try:
     key = st.secrets['gemini_api_key']
-    configure(api_key=key)
-    model = GenerativeModel('gemini-2.0-flash-lite')
+    genai.configure(api_key=key)  # ✅ ใช้ genai.configure
+    model = genai.GenerativeModel('gemini-2.0-flash-lite')  # ✅ ใช้ genai.GenerativeModel
 
     st.title('Gemini with Sales Data')
 
