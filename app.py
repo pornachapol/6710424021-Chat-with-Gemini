@@ -9,11 +9,11 @@ model = genai.GenerativeModel("gemini-2.0-flash-lite")
 
 st.title("📊 Gemini Analyst: Execute + Explain + Chat")
 
-# Upload
+# Upload CSVs
 transaction_file = st.file_uploader("📁 Upload Transaction CSV", type=["csv"], key="trans")
 dict_file = st.file_uploader("📘 Upload Data Dictionary CSV", type=["csv"], key="dict")
 
-# Session state for history
+# Session history
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
@@ -43,19 +43,25 @@ if transaction_file and dict_file:
             st.markdown("**🗣️ Gemini Opinion**")
             st.markdown(entry["summary"])
 
-    # User Input
+    # Main input
     user_input = st.chat_input("💬 Ask a question about your data")
     if user_input:
         with st.chat_message("user"):
             st.markdown(user_input)
 
         with st.spinner("🤖 Generating Python code..."):
-            # ✅ FIXED: Use `user_input` instead of `question`
+            # Prompt Gemini to generate Python code with exec()
             prompt = f"""
-You are a helpful Python code generator.
-Your goal is to write Python code snippets based on the user's question and the provided DataFrame information.
+You are a helpful Python code generator and business analyst.
 
-Here’s the context:
+Your job is to:
+1. Generate Python code to query or calculate the answer based on the user’s question and the provided DataFrame.
+2. Run the code using `exec()` and return the result in a variable named `ANSWER`.
+3. After the code is executed, analyze the result and provide:
+    - A concise summary in plain English
+    - A professional opinion or business insight based on the result
+
+---
 
 **User Question:**
 {user_input}
@@ -71,30 +77,16 @@ Here’s the context:
 
 ---
 
-**Instructions:**
-
-1. Write Python code that directly answers the user's question by querying or manipulating the DataFrame.
-2. Wrap all generated code in `exec(\\\"\\\"\\\"...\\\"\\\"\\\")` so that it can be executed using Python's exec function.
-3. DO NOT import pandas or load any external data.
-4. If the question involves date filtering, convert the date column to datetime format using `pd.to_datetime()`.
-5. Store the final result in a variable called `ANSWER`. This can be a value, a filtered DataFrame, or other result based on the question.
-6. The DataFrame is already loaded in a variable called `{df_name}` — do not reload or redefine it.
-7. Do NOT explain the code. Only return valid Python code inside `exec()`.
-8. Make the code concise and only return what is needed to answer the question.
-9. If a specific output format is required (e.g., list, number, average), ensure that `ANSWER` holds that value directly.
-
----
-
-**Example:**
-
-If the user asks: “Show me the rows where the 'age' column is greater than 30.”  
-And the DataFrame has an 'age' column, your response should be:
-
-```python
-exec(\"\"\"
-ANSWER = {df_name}[{df_name}['age'] > 30]
-\"\"\")
+**Instructions for Code Generation:**
+- Write Python code inside exec(\"\"\"...\"\"\")
+- The code must directly answer the user's question
+- DO NOT import pandas or any libraries
+- Convert any date columns using pd.to_datetime() if needed
+- Store the result in ANSWER
+- The DataFrame is already loaded into a variable called {df_name}
+- Return only the code. No explanation.
 """
+
             code_response = model.generate_content(prompt)
             generated_code = code_response.text.strip().replace("```python", "").replace("```", "")
 
@@ -103,21 +95,16 @@ ANSWER = {df_name}[{df_name}['age'] > 30]
                 exec(generated_code, {}, local_vars)
                 answer_data = local_vars.get("ANSWER", "No ANSWER found.")
 
+                # Summarize + Opinion
                 explain_prompt = f"""
-User asked:
-{user_input}
+The user asked: {user_input}
 
-Executed Python code:
-{generated_code}
-
-Result:
+Here is the result of the executed code:
 {str(answer_data)}
 
-Now:
-1. Summarize the result in plain English.
-2. Provide analysis and interpretation.
-3. Add your opinion or business insight based on the result.
+Please summarize the result in plain English and provide your professional opinion or insight based on the result.
 """
+
                 summary_response = model.generate_content(explain_prompt)
 
                 with st.chat_message("assistant"):
@@ -128,6 +115,7 @@ Now:
                     st.markdown("**🗣️ Gemini Opinion**")
                     st.markdown(summary_response.text)
 
+                # Save to history
                 st.session_state.chat_history.append({
                     "question": user_input,
                     "code": generated_code,
@@ -137,5 +125,6 @@ Now:
 
             except Exception as e:
                 st.error(f"❌ Error executing code: {e}")
+
 else:
     st.info("📌 Please upload both CSV files to begin.")
