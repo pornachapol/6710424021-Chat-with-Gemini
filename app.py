@@ -1,41 +1,44 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai  # ✅ import module ให้ครบ
+import google.generativeai as genai
 
 try:
     key = st.secrets['gemini_api_key']
-    genai.configure(api_key=key)  # ✅ ใช้ genai.configure
-    model = genai.GenerativeModel('gemini-2.0-flash-lite')  # ✅ ใช้ genai.GenerativeModel
+    genai.configure(api_key=key)
+    model = genai.GenerativeModel('gemini-2.0-flash-lite')
 
-    st.title('Gemini with Sales Data')
+    st.title('📊 Gemini - Sales Insight from CSV')
 
-    uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+    # 1. Upload Transaction File
+    transaction_file = st.file_uploader("📥 Upload Transaction CSV", type=["csv"], key="trans")
 
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file)
+    # 2. Upload Data Dictionary File
+    dict_file = st.file_uploader("📥 Upload Data Dictionary CSV", type=["csv"], key="dict")
 
-        # Show preview
-        st.subheader("Data Preview")
-        st.dataframe(df)
+    if transaction_file is not None and dict_file is not None:
+        # Read files
+        df_trans = pd.read_csv(transaction_file)
+        df_dict = pd.read_csv(dict_file)
 
-        # ✅ Generate Data Dictionary
-        st.subheader("Data Dictionary")
-        data_dict = pd.DataFrame({
-            "Column Name": df.columns,
-            "Data Type": [str(df[col].dtype) for col in df.columns],
-            "Example Value": [", ".join(map(str, df[col].dropna().unique()[:3])) for col in df.columns]
-        })
-        st.dataframe(data_dict)
+        # Show data preview
+        st.subheader("🔍 Transaction Data Preview")
+        st.dataframe(df_trans)
 
-        # ✅ Prepare context for Gemini
-        context_info = f"The uploaded CSV contains the following data dictionary:\n{data_dict.to_markdown(index=False)}\n\nNow use this as context to answer user questions."
+        st.subheader("📘 Data Dictionary Preview")
+        st.dataframe(df_dict)
+
+        # Combine into context
+        context_info = f"""Here is the data dictionary for interpreting the transaction data:
+{df_dict.to_markdown(index=False)}
+
+Now use this context to help analyze or answer questions about the transaction data.
+"""
 
         if "chat" not in st.session_state:
             st.session_state.chat = model.start_chat(history=[
                 {"role": "user", "parts": [context_info]}
             ])
 
-        # ✅ Display chat history
         def role_to_streamlit(role: str) -> str:
             return 'assistant' if role == 'model' else role
 
@@ -43,8 +46,7 @@ try:
             with st.chat_message(role_to_streamlit(message.role)):
                 st.markdown(message.parts[0].text)
 
-        # ✅ Chat input & AI response
-        if prompt := st.chat_input("Ask a question about your data"):
+        if prompt := st.chat_input("💬 Ask anything about your transaction data"):
             st.chat_message('user').markdown(prompt)
 
             full_prompt = f"{context_info}\n\nUser Question: {prompt}\nAnswer based on the data."
@@ -54,7 +56,7 @@ try:
                 st.markdown(response.text)
 
     else:
-        st.info("Please upload a CSV file to begin.")
+        st.info("📌 Please upload both the Transaction CSV and the Data Dictionary CSV to begin.")
 
 except Exception as e:
     st.error(f'An error occurred: {e}')
