@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
 
 try:
     key = st.secrets['gemini_api_key']
