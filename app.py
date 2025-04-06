@@ -3,7 +3,6 @@ import pandas as pd
 import google.generativeai as genai
 
 try:
-    # Setup Gemini API
     key = st.secrets["gemini_api_key"]
     genai.configure(api_key=key)
     model = genai.GenerativeModel("gemini-2.0-flash-lite")
@@ -29,13 +28,13 @@ try:
         data_dict_text = df_dict.to_string(index=False)
         example_record = df.head(2).to_string(index=False)
 
-        # Step 2: User enters question
+        # Step 2: User inputs question
         question = st.text_input("💬 Ask a question about your data:")
 
         if question:
-            with st.spinner("🤖 Generating code..."):
+            with st.spinner("🤖 Generating Python code..."):
 
-                # Step 3: Construct safe prompt (escaped triple quotes)
+                # Step 3: Prompt for Gemini
                 prompt = f"""
 You are a Python code-writing assistant.
 Your ONLY job is to generate Python code inside an exec() block — no explanation, no markdown, no text.
@@ -59,7 +58,7 @@ Your ONLY job is to generate Python code inside an exec() block — no explanati
 🛠 Instructions:
 1. The DataFrame '{df_name}' is already loaded in memory.
 2. DO NOT import pandas or load any files.
-3. If the question involves dates, convert the date column to datetime first.
+3. If the question involves dates, convert the date column to datetime first using pd.to_datetime().
 4. Store the result in a variable called 'ANSWER'.
 5. Your response MUST be a valid Python exec(\\\"\\\"\\\"...\\\"\\\"\\\") string. No other text is allowed.
 6. The answer can be a value, filtered dataframe, or summary.
@@ -72,11 +71,10 @@ Your ONLY job is to generate Python code inside an exec() block — no explanati
                 st.code(generated_code, language="python")
 
                 try:
-                    # Step 4: Execute code
-                    local_vars = {"df": df}
+                    # Step 4: Execute with pd passed in
+                    local_vars = {"df": df, "pd": pd}
                     exec(generated_code, {}, local_vars)
 
-                    # Step 5: Show result
                     if "ANSWER" in local_vars:
                         st.subheader("✅ Result (from variable 'ANSWER')")
                         st.write(local_vars["ANSWER"])
