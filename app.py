@@ -18,18 +18,16 @@ try:
         st.subheader("Data Preview")
         st.dataframe(df)
 
-# Generate Data Dictionary
-st.subheader("Data Dictionary")
+        # ✅ Generate Data Dictionary
+        st.subheader("Data Dictionary")
+        data_dict = pd.DataFrame({
+            "Column Name": df.columns,
+            "Data Type": [str(df[col].dtype) for col in df.columns],
+            "Example Value": [", ".join(map(str, df[col].dropna().unique()[:3])) for col in df.columns]
+        })
+        st.dataframe(data_dict)
 
-data_dict = pd.DataFrame({
-    "Column Name": df.columns,
-    "Data Type": [str(df[col].dtype) for col in df.columns],
-    "Example Value": [", ".join(map(str, df[col].dropna().unique()[:3])) for col in df.columns]
-})
-
-st.dataframe(data_dict)
-
-        # Prepare context for the model
+        # ✅ Prepare context for Gemini
         context_info = f"The uploaded CSV contains the following data dictionary:\n{data_dict.to_markdown(index=False)}\n\nNow use this as context to answer user questions."
 
         if "chat" not in st.session_state:
@@ -37,6 +35,7 @@ st.dataframe(data_dict)
                 {"role": "user", "parts": [context_info]}
             ])
 
+        # ✅ Display chat history
         def role_to_streamlit(role: str) -> str:
             return 'assistant' if role == 'model' else role
 
@@ -44,6 +43,7 @@ st.dataframe(data_dict)
             with st.chat_message(role_to_streamlit(message.role)):
                 st.markdown(message.parts[0].text)
 
+        # ✅ Chat input & AI response
         if prompt := st.chat_input("Ask a question about your data"):
             st.chat_message('user').markdown(prompt)
 
