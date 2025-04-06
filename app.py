@@ -1,3 +1,5 @@
+pip install streamlit pandas google-generativeai
+
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai  # ✅ import module ให้ครบ
