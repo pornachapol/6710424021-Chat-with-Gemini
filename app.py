@@ -52,34 +52,43 @@ if transaction_file and dict_file:
         with st.spinner("🤖 Generating Python code..."):
             # Prompt Gemini to generate code
             prompt = f"""
-You are a Python code-writing assistant.
-Only return Python code wrapped inside exec(\\\"\\\"\\\"...\\\"\\\"\\\"). No explanation, no markdown.
-
----
-
-User Question:
-{user_input}
-
-DataFrame Name: {df_name}
-
-Data Dictionary:
+You are a helpful Python code generator.
+Your goal is to write Python code snippets based on the user'squestionand the provided DataFrame information.
+Here's the context:
+**User Question:**
+{question}
+**DataFrame Name:**
+{df_name}
+**DataFrame Details:**
 {data_dict_text}
-
-Sample Data (Top 2 Rows):
+**Sample Data (Top 2 Rows):**
 {example_record}
 
----
+**Instructions:**
+1. Write Python code that addresses the user's question by querying or
+manipulating the DataFrame.
+2. **Crucially, use the `exec()` function to execute the generated
+code.**
+3. Do not import pandas
+4. Change date column type to datetime
+5. **Store the result of the executed code in a variable named
+`ANSWER`.**
+This variable should hold the answer to the user's question (e.g.,
+a filtered DataFrame, a calculated value, etc.).
+6. Assume the DataFrame is already loaded into a pandas DataFrame object
+named `{df_name}`. Do not include code to load the DataFrame.
+7. Keep the generated code concise and focused on answering the question.
+8. If the question requires a specific output format (e.g., a list, a
+single value), ensure the `query_result` variable holds that format.
 
-Instructions:
-- The DataFrame '{df_name}' is already loaded in memory.
-- DO NOT import pandas or read files.
-- Convert date columns using pd.to_datetime() if necessary.
-- Your goal is to provide the final **answer** to the user’s question. For example:
-    - If the question asks for a total → return a number (e.g., total = ...)
-    - If the question asks for average, count, max, top N, etc. → return a specific, clear result
-- Do NOT return filtered raw tables unless explicitly asked.
-- Store the final result in a variable called 'ANSWER'.
-- Wrap your code with exec(\\\"\\\"\\\"...\\\"\\\"\\\").
+**Example:**
+If the user asks: "Show me the rows where the 'age' column is
+greater than 30."
+And the DataFrame has an 'age' column.
+The generated code should look something like this (inside the
+`exec()` string):
+```python
+query_result = {df_name}[{df_name}['age'] > 30]
 """
             code_response = model.generate_content(prompt)
             generated_code = code_response.text.strip().replace("```python", "").replace("```", "")
