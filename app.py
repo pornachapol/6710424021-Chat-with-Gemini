@@ -79,12 +79,12 @@ Your job is to:
 
 **Instructions for Code Generation:**
 - Write Python code inside exec(\"\"\"...\"\"\")
-- The code must directly answer the user's question
-- DO NOT import pandas or any libraries
-- Convert any date columns using pd.to_datetime() if needed
-- Store the result in ANSWER
+- DO NOT import pandas
+- DO NOT load files
+- If the question involves a date/time column, use `pd.to_datetime()` to convert it before using `.dt`
+- Store the final result in a variable called `ANSWER`
 - The DataFrame is already loaded into a variable called {df_name}
-- Return only the code. No explanation.
+- Return only valid Python code — no markdown or explanation
 """
 
             code_response = model.generate_content(prompt)
