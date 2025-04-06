@@ -3,8 +3,8 @@ import pandas as pd
 
 try:
     key = st.secrets['gemini_api_key']
-    genai.configure(api_key=key)
-    model = genai.GenerativeModel('gemini-2.0-flash-lite')
+    configure(api_key=key)
+    model = GenerativeModel('gemini-2.0-flash-lite')
 
     st.title('Gemini with Sales Data')
 
