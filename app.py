@@ -18,14 +18,16 @@ try:
         st.subheader("Data Preview")
         st.dataframe(df)
 
-        # Generate Data Dictionary
-        st.subheader("Data Dictionary")
-        data_dict = pd.DataFrame({
-            "Column Name": df.columns,
-            "Data Type": [df[col].dtype for col in df.columns],
-            "Example Value": [df[col].dropna().unique()[:3] for col in df.columns]
-        })
-        st.dataframe(data_dict)
+# Generate Data Dictionary
+st.subheader("Data Dictionary")
+
+data_dict = pd.DataFrame({
+    "Column Name": df.columns,
+    "Data Type": [str(df[col].dtype) for col in df.columns],
+    "Example Value": [", ".join(map(str, df[col].dropna().unique()[:3])) for col in df.columns]
+})
+
+st.dataframe(data_dict)
 
         # Prepare context for the model
         context_info = f"The uploaded CSV contains the following data dictionary:\n{data_dict.to_markdown(index=False)}\n\nNow use this as context to answer user questions."
