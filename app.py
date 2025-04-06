@@ -7,9 +7,9 @@ try:
     genai.configure(api_key=key)
     model = genai.GenerativeModel("gemini-2.0-flash-lite")
 
-    st.title("📊 Gemini: Ask Your Data with Executable Code")
+    st.title("📊 Gemini: Ask Your Data, See the Code, Understand the Answer")
 
-    # Step 1: Upload CSV files
+    # Upload files
     transaction_file = st.file_uploader("📁 Upload Transaction CSV", type=["csv"], key="trans")
     dict_file = st.file_uploader("📘 Upload Data Dictionary CSV", type=["csv"], key="dict")
 
@@ -28,56 +28,81 @@ try:
         data_dict_text = df_dict.to_string(index=False)
         example_record = df.head(2).to_string(index=False)
 
-        # Step 2: User inputs question
+        # Step 1: Ask Question
         question = st.text_input("💬 Ask a question about your data:")
 
         if question:
             with st.spinner("🤖 Generating Python code..."):
 
-                # Step 3: Prompt for Gemini
                 prompt = f"""
 You are a Python code-writing assistant.
 Your ONLY job is to generate Python code inside an exec() block — no explanation, no markdown, no text.
 
----
-
-🔍 User Question:
+User Question:
 {question}
 
-📦 DataFrame Name:
-{df_name}
-
-📘 Data Dictionary:
+DataFrame Name: {df_name}
+Data Dictionary:
 {data_dict_text}
-
-📊 Sample Data (Top 2 Rows):
+Sample Data:
 {example_record}
 
----
-
-🛠 Instructions:
-1. The DataFrame '{df_name}' is already loaded in memory.
-2. DO NOT import pandas or load any files.
-3. If the question involves dates, convert the date column to datetime first using pd.to_datetime().
-4. Store the result in a variable called 'ANSWER'.
-5. Your response MUST be a valid Python exec(\\\"\\\"\\\"...\\\"\\\"\\\") string. No other text is allowed.
-6. The answer can be a value, filtered dataframe, or summary.
+Instructions:
+- Assume df is already loaded.
+- DO NOT import pandas.
+- Use pd.to_datetime() for date conversion.
+- Store the result in a variable named ANSWER.
+- Wrap code in exec(\\\"\\\"\\\"...\\\"\\\"\\\")
 """
-
                 response = model.generate_content(prompt)
                 generated_code = response.text.strip().replace("```python", "").replace("```", "")
-
                 st.subheader("🧠 Generated Code")
                 st.code(generated_code, language="python")
 
                 try:
-                    # Step 4: Execute with pd passed in
                     local_vars = {"df": df, "pd": pd}
                     exec(generated_code, {}, local_vars)
 
                     if "ANSWER" in local_vars:
-                        st.subheader("✅ Result (from variable 'ANSWER')")
-                        st.write(local_vars["ANSWER"])
+                        answer_data = local_vars["ANSWER"]
+
+                        st.subheader("✅ Result from Code (ANSWER)")
+                        st.write(answer_data)
+
+                        # Step 2: Ask Gemini to explain the result
+                        explanation_prompt = f"""
+Below is the result from a Python data query based on the user question:
+**{question}**
+
+Here is the output:
+{str(answer_data)}
+
+Please summarize or interpret the result in plain language as if you were explaining to a business user.
+"""
+
+                        explain_response = model.generate_content(explanation_prompt)
+                        st.subheader("🗣️ Gemini Summary")
+                        st.write(explain_response.text)
+
+                        # Step 3: Allow user to follow up
+                        followup = st.chat_input("🔁 Ask follow-up question (based on the result above):")
+                        if followup:
+                            context_followup = f"""
+You previously answered the question:
+**{question}**
+
+Here was the result:
+{str(answer_data)}
+
+User follow-up question:
+**{followup}**
+
+Answer in plain language, or write Python code if necessary.
+"""
+                            followup_response = model.generate_content(context_followup)
+                            with st.chat_message("assistant"):
+                                st.markdown(followup_response.text)
+
                     else:
                         st.warning("⚠️ No variable named 'ANSWER' found in the executed code.")
                 except Exception as e:
