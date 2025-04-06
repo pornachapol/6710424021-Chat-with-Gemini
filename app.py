@@ -53,22 +53,33 @@ if transaction_file and dict_file:
             # Prompt Gemini to generate code
             prompt = f"""
 You are a Python code-writing assistant.
-Only return Python code wrapped inside exec(\\\"\\\"\\\"...\\\"\\\"\\\"). No explanation.
+Only return Python code wrapped inside exec(\\\"\\\"\\\"...\\\"\\\"\\\"). No explanation, no markdown.
+
+---
 
 User Question:
 {user_input}
 
 DataFrame Name: {df_name}
+
 Data Dictionary:
 {data_dict_text}
-Sample Data:
+
+Sample Data (Top 2 Rows):
 {example_record}
 
+---
+
 Instructions:
-- DataFrame is already loaded.
-- Use pd.to_datetime() to convert date columns.
-- Store result in a variable named 'ANSWER'.
-- Do NOT import pandas.
+- The DataFrame '{df_name}' is already loaded in memory.
+- DO NOT import pandas or read files.
+- Convert date columns using pd.to_datetime() if necessary.
+- Your goal is to provide the final **answer** to the user’s question. For example:
+    - If the question asks for a total → return a number (e.g., total = ...)
+    - If the question asks for average, count, max, top N, etc. → return a specific, clear result
+- Do NOT return filtered raw tables unless explicitly asked.
+- Store the final result in a variable called 'ANSWER'.
+- Wrap your code with exec(\\\"\\\"\\\"...\\\"\\\"\\\").
 """
             code_response = model.generate_content(prompt)
             generated_code = code_response.text.strip().replace("```python", "").replace("```", "")
