@@ -7,9 +7,9 @@ try:
     genai.configure(api_key=key)
     model = genai.GenerativeModel("gemini-2.0-flash-lite")
 
-    st.title("📊 Gemini: Ask Your Data, See the Code, Understand the Answer")
+    st.title("📊 Gemini AI Analyst: Ask, Execute, and Understand Your Data")
 
-    # Upload files
+    # Upload 2 CSV files
     transaction_file = st.file_uploader("📁 Upload Transaction CSV", type=["csv"], key="trans")
     dict_file = st.file_uploader("📘 Upload Data Dictionary CSV", type=["csv"], key="dict")
 
@@ -23,40 +23,47 @@ try:
         st.subheader("📚 Data Dictionary")
         st.dataframe(df_dict)
 
-        # Prepare context
         df_name = "df"
         data_dict_text = df_dict.to_string(index=False)
         example_record = df.head(2).to_string(index=False)
 
-        # Step 1: Ask Question
         question = st.text_input("💬 Ask a question about your data:")
 
         if question:
-            with st.spinner("🤖 Generating Python code..."):
+            with st.spinner("🤖 Generating Python code from Gemini..."):
 
+                # Force Gemini to return exec() block only
                 prompt = f"""
 You are a Python code-writing assistant.
-Your ONLY job is to generate Python code inside an exec() block — no explanation, no markdown, no text.
+Return Python code ONLY inside an exec() block — no explanation, no markdown.
 
-User Question:
+---
+
+🔍 User Question:
 {question}
 
-DataFrame Name: {df_name}
-Data Dictionary:
+📦 DataFrame Name: {df_name}
+
+📘 Data Dictionary:
 {data_dict_text}
-Sample Data:
+
+📊 Sample Data:
 {example_record}
 
-Instructions:
-- Assume df is already loaded.
+---
+
+🛠 Instructions:
+- The DataFrame '{df_name}' is already loaded.
 - DO NOT import pandas.
-- Use pd.to_datetime() for date conversion.
-- Store the result in a variable named ANSWER.
-- Wrap code in exec(\\\"\\\"\\\"...\\\"\\\"\\\")
+- Use pd.to_datetime() to convert dates.
+- Store result in variable 'ANSWER'.
+- Output only Python code inside exec(\\\"\\\"\\\"...\\\"\\\"\\\").
 """
+
                 response = model.generate_content(prompt)
                 generated_code = response.text.strip().replace("```python", "").replace("```", "")
-                st.subheader("🧠 Generated Code")
+
+                st.subheader("🧠 Generated Python Code")
                 st.code(generated_code, language="python")
 
                 try:
@@ -66,49 +73,53 @@ Instructions:
                     if "ANSWER" in local_vars:
                         answer_data = local_vars["ANSWER"]
 
-                        st.subheader("✅ Result from Code (ANSWER)")
+                        st.subheader("✅ Result (ANSWER)")
                         st.write(answer_data)
 
-                        # Step 2: Ask Gemini to explain the result
-                        explanation_prompt = f"""
-Below is the result from a Python data query based on the user question:
+                        # ✨ Explain + Opinion from Gemini
+                        explain_prompt = f"""
+The user asked:
 **{question}**
 
-Here is the output:
+The following is the output of the executed Python code:
 {str(answer_data)}
 
-Please summarize or interpret the result in plain language as if you were explaining to a business user.
+Please do the following:
+1. Summarize the result in plain English/Thai
+2. Provide your analysis and interpretation
+3. Give your professional opinion or business insight based on the result
+Make your explanation easy to understand and business-friendly.
 """
+                        explain_response = model.generate_content(explain_prompt)
 
-                        explain_response = model.generate_content(explanation_prompt)
-                        st.subheader("🗣️ Gemini Summary")
+                        st.subheader("🗣️ Gemini Summary + Opinion")
                         st.write(explain_response.text)
 
-                        # Step 3: Allow user to follow up
-                        followup = st.chat_input("🔁 Ask follow-up question (based on the result above):")
+                        # 🔁 Follow-up prompt
+                        followup = st.chat_input("🔁 Ask a follow-up question:")
                         if followup:
                             context_followup = f"""
-You previously answered the question:
+User previously asked:
 **{question}**
 
-Here was the result:
+Result:
 {str(answer_data)}
 
-User follow-up question:
+Now they follow-up with:
 **{followup}**
 
-Answer in plain language, or write Python code if necessary.
+Please respond based on the context and data above, including reasoning and opinion if helpful.
 """
                             followup_response = model.generate_content(context_followup)
                             with st.chat_message("assistant"):
                                 st.markdown(followup_response.text)
 
                     else:
-                        st.warning("⚠️ No variable named 'ANSWER' found in the executed code.")
+                        st.warning("⚠️ No variable named 'ANSWER' found.")
                 except Exception as e:
                     st.error(f"❌ Error executing code: {e}")
     else:
-        st.info("📌 Please upload both CSV files to begin.")
+        st.info("📌 Please upload both CSV files to continue.")
 
 except Exception as e:
     st.error(f"❗ Application error: {e}")
