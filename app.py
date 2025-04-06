@@ -31,7 +31,7 @@ if transaction_file and dict_file:
     data_dict_text = df_dict.to_string(index=False)
     example_record = df.head(2).to_string(index=False)
 
-    # Show history
+    # Show chat history
     for entry in st.session_state.chat_history:
         with st.chat_message("user"):
             st.markdown(entry["question"])
@@ -43,14 +43,14 @@ if transaction_file and dict_file:
             st.markdown("**🗣️ Gemini Opinion**")
             st.markdown(entry["summary"])
 
-    # Input
+    # User Input
     user_input = st.chat_input("💬 Ask a question about your data")
     if user_input:
         with st.chat_message("user"):
             st.markdown(user_input)
 
         with st.spinner("🤖 Generating Python code..."):
-            # Prompt Gemini to generate code
+            # ✅ FIXED: Use `user_input` instead of `question`
             prompt = f"""
 You are a helpful Python code generator.
 Your goal is to write Python code snippets based on the user's question and the provided DataFrame information.
@@ -58,7 +58,7 @@ Your goal is to write Python code snippets based on the user's question and the 
 Here’s the context:
 
 **User Question:**
-{question}
+{user_input}
 
 **DataFrame Name:**
 {df_name}
@@ -94,16 +94,15 @@ And the DataFrame has an 'age' column, your response should be:
 exec(\"\"\"
 ANSWER = {df_name}[{df_name}['age'] > 30]
 \"\"\")
+"""
             code_response = model.generate_content(prompt)
             generated_code = code_response.text.strip().replace("```python", "").replace("```", "")
 
-            # Execute
             try:
                 local_vars = {"df": df, "pd": pd}
                 exec(generated_code, {}, local_vars)
                 answer_data = local_vars.get("ANSWER", "No ANSWER found.")
 
-                # Ask Gemini to explain the result
                 explain_prompt = f"""
 User asked:
 {user_input}
@@ -129,7 +128,6 @@ Now:
                     st.markdown("**🗣️ Gemini Opinion**")
                     st.markdown(summary_response.text)
 
-                # Save to session history
                 st.session_state.chat_history.append({
                     "question": user_input,
                     "code": generated_code,
