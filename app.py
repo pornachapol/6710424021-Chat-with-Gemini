@@ -53,43 +53,47 @@ if transaction_file and dict_file:
             # Prompt Gemini to generate code
             prompt = f"""
 You are a helpful Python code generator.
-Your goal is to write Python code snippets based on the user'squestionand the provided DataFrame information.
-Here's the context:
+Your goal is to write Python code snippets based on the user's question and the provided DataFrame information.
+
+Here’s the context:
+
 **User Question:**
 {question}
+
 **DataFrame Name:**
 {df_name}
+
 **DataFrame Details:**
 {data_dict_text}
+
 **Sample Data (Top 2 Rows):**
 {example_record}
 
+---
+
 **Instructions:**
-1. Write Python code that addresses the user's question by querying or
-manipulating the DataFrame.
-2. **Crucially, use the `exec()` function to execute the generated
-code.**
-3. Do not import pandas
-4. Change date column type to datetime
-5. **Store the result of the executed code in a variable named
-`ANSWER`.**
-This variable should hold the answer to the user's question (e.g.,
-a filtered DataFrame, a calculated value, etc.).
-6. Assume the DataFrame is already loaded into a pandas DataFrame object
-named `{df_name}`. Do not include code to load the DataFrame.
-7. Keep the generated code concise and focused on answering the question.
-8. If the question requires a specific output format (e.g., a list, a
-single value), ensure the `query_result` variable holds that format.
+
+1. Write Python code that directly answers the user's question by querying or manipulating the DataFrame.
+2. Wrap all generated code in `exec(\\\"\\\"\\\"...\\\"\\\"\\\")` so that it can be executed using Python's exec function.
+3. DO NOT import pandas or load any external data.
+4. If the question involves date filtering, convert the date column to datetime format using `pd.to_datetime()`.
+5. Store the final result in a variable called `ANSWER`. This can be a value, a filtered DataFrame, or other result based on the question.
+6. The DataFrame is already loaded in a variable called `{df_name}` — do not reload or redefine it.
+7. Do NOT explain the code. Only return valid Python code inside `exec()`.
+8. Make the code concise and only return what is needed to answer the question.
+9. If a specific output format is required (e.g., list, number, average), ensure that `ANSWER` holds that value directly.
+
+---
 
 **Example:**
-If the user asks: "Show me the rows where the 'age' column is
-greater than 30."
-And the DataFrame has an 'age' column.
-The generated code should look something like this (inside the
-`exec()` string):
+
+If the user asks: “Show me the rows where the 'age' column is greater than 30.”  
+And the DataFrame has an 'age' column, your response should be:
+
 ```python
-query_result = {df_name}[{df_name}['age'] > 30]
-"""
+exec(\"\"\"
+ANSWER = {df_name}[{df_name}['age'] > 30]
+\"\"\")
             code_response = model.generate_content(prompt)
             generated_code = code_response.text.strip().replace("```python", "").replace("```", "")
 
